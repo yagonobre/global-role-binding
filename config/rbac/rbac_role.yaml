@@ -5,9 +5,16 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - apps
+  - v1
   resources:
-  - deployments
+  - namespaces
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - rbac
+  resources:
+  - rolebindings
   verbs:
   - get
   - list

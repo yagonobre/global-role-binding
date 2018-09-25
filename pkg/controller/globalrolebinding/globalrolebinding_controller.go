@@ -4,10 +4,11 @@ import (
 	"context"
 	"log"
 	"reflect"
+	"regexp"
 
 	customv1alpha1 "github.com/yagonobre/global-role-binding/pkg/apis/custom/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,14 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
-
 // Add creates a new GLobalRoleBinding Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// USER ACTION REQUIRED: update cmd/manager/main.go to call this custom.Add(mgr) to install this Controller
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
@@ -38,6 +33,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileGLobalRoleBinding{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
+//TODO add namespaces watch
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
@@ -52,9 +48,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by GLobalRoleBinding - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+	// Watch for changes to RoleBinding
+	err = c.Watch(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &customv1alpha1.GLobalRoleBinding{},
 	})
@@ -75,12 +70,13 @@ type ReconcileGLobalRoleBinding struct {
 
 // Reconcile reads that state of the cluster for a GLobalRoleBinding object and makes changes based on the state read
 // and what is in the GLobalRoleBinding.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
-// a Deployment as an example
-// Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=v1,resources=namespaces,verbs=list;watch
+// +kubebuilder:rbac:groups=rbac,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=custom.authorization.global.io,resources=globalrolebindings,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileGLobalRoleBinding) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	//When a roleBinding was deleted the request is create with namespace but the resource is unamespaced
+	request.NamespacedName.Namespace = ""
+
 	// Fetch the GLobalRoleBinding instance
 	instance := &customv1alpha1.GLobalRoleBinding{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
@@ -94,57 +90,86 @@ func (r *ReconcileGLobalRoleBinding) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
-			Namespace: "default",
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
+	namespaces, err := r.getNamespacesByRegex(instance.Namespaces)
+	if err != nil {
 		return reconcile.Result{}, err
 	}
-
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
-	found := &appsv1.Deployment{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Printf("Creating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Create(context.TODO(), deploy)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		found.Spec = deploy.Spec
-		log.Printf("Updating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Update(context.TODO(), found)
-		if err != nil {
+	for _, namespace := range namespaces {
+		if err := r.createOrUpdateRoleBinding(instance, namespace); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileGLobalRoleBinding) getNamespacesByRegex(namespaceRegex string) ([]string, error) {
+	regex := regexp.MustCompile(namespaceRegex)
+	namespaceList := &corev1.NamespaceList{}
+	result := []string{}
+	err := r.List(context.TODO(), nil, namespaceList)
+	if err != nil {
+		return nil, err
+	}
+	for _, namespace := range namespaceList.Items {
+		if regex.MatchString(namespace.Name) {
+			result = append(result, namespace.Name)
+		}
+	}
+	return result, nil
+}
+
+func (r *ReconcileGLobalRoleBinding) roleBindingSpec(globalRoleBinding *customv1alpha1.GLobalRoleBinding, namespace string) (*rbacv1.RoleBinding, error) {
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      globalRoleBinding.Name,
+			Namespace: namespace,
+		},
+		Subjects: []rbacv1.Subject{},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: globalRoleBinding.RoleRef.APIGroup,
+			Kind:     globalRoleBinding.RoleRef.Kind,
+			Name:     globalRoleBinding.RoleRef.Name,
+		},
+	}
+
+	for _, subject := range globalRoleBinding.Subjects {
+		roleBinding.Subjects = append(roleBinding.Subjects, rbacv1.Subject{
+			Kind:     subject.Kind,
+			APIGroup: subject.APIGroup,
+			Name:     subject.Name})
+	}
+
+	if err := controllerutil.SetControllerReference(globalRoleBinding, roleBinding, r.scheme); err != nil {
+		return nil, err
+	}
+	return roleBinding, nil
+}
+
+//TODO rewrite this function
+func (r *ReconcileGLobalRoleBinding) createOrUpdateRoleBinding(globalRoleBinding *customv1alpha1.GLobalRoleBinding, namespace string) error {
+	roleBinding, err := r.roleBindingSpec(globalRoleBinding, namespace)
+	if err != nil {
+		return err
+	}
+	found := &rbacv1.RoleBinding{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		log.Printf("Creating RoleBinding %s/%s\n", roleBinding.Namespace, roleBinding.Name)
+		err = r.Create(context.TODO(), roleBinding)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	if !reflect.DeepEqual(roleBinding.Subjects, found.Subjects) || !reflect.DeepEqual(roleBinding.RoleRef, found.RoleRef) {
+		found = roleBinding
+		log.Printf("Updating RoleBinding %s/%s\n", roleBinding.Namespace, roleBinding.Name)
+		err = r.Update(context.TODO(), found)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
