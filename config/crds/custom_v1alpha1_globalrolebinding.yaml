@@ -20,10 +20,40 @@ spec:
           type: string
         metadata:
           type: object
-        spec:
+        namespaces:
+          type: string
+        roleRef:
+          properties:
+            apiGroup:
+              type: string
+            kind:
+              type: string
+            name:
+              type: string
+          required:
+          - apiGroup
+          - kind
+          - name
           type: object
-        status:
-          type: object
+        subjects:
+          items:
+            properties:
+              apiGroup:
+                type: string
+              kind:
+                type: string
+              name:
+                type: string
+            required:
+            - kind
+            - apiGroup
+            - name
+            type: object
+          type: array
+      required:
+      - subjects
+      - roleRef
+      - namespaces
   version: v1alpha1
 status:
   acceptedNames:

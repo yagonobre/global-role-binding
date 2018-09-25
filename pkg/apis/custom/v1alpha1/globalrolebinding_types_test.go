@@ -11,12 +11,22 @@ import (
 
 func TestStorageGLobalRoleBinding(t *testing.T) {
 	key := types.NamespacedName{
-		Name: "foo",
+		Name: "dogs",
 	}
 	created := &GLobalRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "foo",
-		}}
+		ObjectMeta: metav1.ObjectMeta{Name: "dogs"},
+		Subjects: []Subject{{
+			Kind:     "User",
+			APIGroup: "rbac.authorization.k8s.io",
+			Name:     "Mohr",
+		}},
+		RoleRef: RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "dogs",
+		},
+		Namespaces: "mr-*",
+	}
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create

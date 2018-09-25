@@ -4,19 +4,28 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// GLobalRoleBindingSpec defines the desired state of GLobalRoleBinding
-type GLobalRoleBindingSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+// Subject contains a reference to the object or user identities a role binding applies to.  This can either hold a direct API object reference,
+// or a value for non-objects such as user and group names.
+type Subject struct {
+	// Kind of object being referenced. Values defined by this API group are "User", "Group", and "ServiceAccount".
+	// If the Authorizer does not recognized the kind value, the Authorizer should report an error.
+	Kind string `json:"kind"`
+	// APIGroup holds the API group of the referenced subject.
+	// Defaults to "" for ServiceAccount subjects.
+	// Defaults to "rbac.authorization.k8s.io" for User and Group subjects.
+	APIGroup string `json:"apiGroup"`
+	// Name of the object being referenced.
+	Name string `json:"name"`
 }
 
-// GLobalRoleBindingStatus defines the observed state of GLobalRoleBinding
-type GLobalRoleBindingStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+// RoleRef contains information that points to the role being used
+type RoleRef struct {
+	// APIGroup is the group for the resource being referenced
+	APIGroup string `json:"apiGroup"`
+	// Kind is the type of resource being referenced
+	Kind string `json:"kind"`
+	// Name is the name of resource being referenced
+	Name string `json:"name"`
 }
 
 // +genclient
@@ -29,8 +38,14 @@ type GLobalRoleBinding struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   GLobalRoleBindingSpec   `json:"spec,omitempty"`
-	Status GLobalRoleBindingStatus `json:"status,omitempty"`
+	// Subjects holds references to the objects the role applies to.
+	Subjects []Subject `json:"subjects"`
+	// RoleRef can only reference a ClusterRole in the global namespace.
+	// If the RoleRef cannot be resolved, the Authorizer must return an error.
+	RoleRef RoleRef `json:"roleRef"`
+	// Namespaces is a regex that match all namespaces that the role
+	// will be created.
+	Namespaces string `json:"namespaces"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
