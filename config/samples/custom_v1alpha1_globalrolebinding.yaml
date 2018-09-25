@@ -1,9 +1,14 @@
 apiVersion: custom.authorization.global.io/v1alpha1
 kind: GLobalRoleBinding
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: globalrolebinding-sample
+  name: globalrolebinding-engineers
 spec:
-  # Add fields here
-  foo: bar
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: engineers
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: engineers
+namespaces: "nu-*"
