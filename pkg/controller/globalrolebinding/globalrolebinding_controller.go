@@ -3,7 +3,6 @@ package globalrolebinding
 import (
 	"context"
 	"log"
-	"reflect"
 	"regexp"
 
 	customv1alpha1 "github.com/yagonobre/global-role-binding/pkg/apis/custom/v1alpha1"
@@ -12,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -145,17 +143,18 @@ func (r *ReconcileGlobalRoleBinding) roleBindingSpec(globalRoleBinding *customv1
 	return roleBinding, nil
 }
 
-//TODO rewrite this function
 func (r *ReconcileGlobalRoleBinding) createOrUpdateRoleBinding(globalRoleBinding *customv1alpha1.GlobalRoleBinding, namespace string) error {
+	notFound := false
 	roleBinding, err := r.roleBindingSpec(globalRoleBinding, namespace)
 	if err != nil {
 		return err
 	}
-	found := &rbacv1.RoleBinding{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, found)
+
+	err = r.Create(context.TODO(), roleBinding)
 	if err != nil && errors.IsNotFound(err) {
-		log.Printf("Creating RoleBinding %s/%s\n", roleBinding.Namespace, roleBinding.Name)
-		err = r.Create(context.TODO(), roleBinding)
+		notFound = true
+		log.Printf("RoleBinding %s/%s exist, updating\n", roleBinding.Namespace, roleBinding.Name)
+		err = r.Update(context.TODO(), roleBinding)
 		if err != nil {
 			return err
 		}
@@ -163,13 +162,8 @@ func (r *ReconcileGlobalRoleBinding) createOrUpdateRoleBinding(globalRoleBinding
 		return err
 	}
 
-	if !reflect.DeepEqual(roleBinding.Subjects, found.Subjects) || !reflect.DeepEqual(roleBinding.RoleRef, found.RoleRef) {
-		found = roleBinding
-		log.Printf("Updating RoleBinding %s/%s\n", roleBinding.Namespace, roleBinding.Name)
-		err = r.Update(context.TODO(), found)
-		if err != nil {
-			return err
-		}
+	if !notFound {
+		log.Printf("Creating RoleBinding %s/%s\n", roleBinding.Namespace, roleBinding.Name)
 	}
 	return nil
 }
