@@ -32,9 +32,9 @@ type RoleRef struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
 
-// GLobalRoleBinding is the Schema for the globalrolebindings API
+// GlobalRoleBinding is the Schema for the globalrolebindings API
 // +k8s:openapi-gen=true
-type GLobalRoleBinding struct {
+type GlobalRoleBinding struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -51,13 +51,13 @@ type GLobalRoleBinding struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
 
-// GLobalRoleBindingList contains a list of GLobalRoleBinding
-type GLobalRoleBindingList struct {
+// GlobalRoleBindingList contains a list of GlobalRoleBinding
+type GlobalRoleBindingList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []GLobalRoleBinding `json:"items"`
+	Items           []GlobalRoleBinding `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&GLobalRoleBinding{}, &GLobalRoleBindingList{})
+	SchemeBuilder.Register(&GlobalRoleBinding{}, &GlobalRoleBindingList{})
 }

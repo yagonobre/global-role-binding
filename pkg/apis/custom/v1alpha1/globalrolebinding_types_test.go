@@ -9,11 +9,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestStorageGLobalRoleBinding(t *testing.T) {
+func TestStorageGlobalRoleBinding(t *testing.T) {
 	key := types.NamespacedName{
 		Name: "dogs",
 	}
-	created := &GLobalRoleBinding{
+	created := &GlobalRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{Name: "dogs"},
 		Subjects: []Subject{{
 			Kind:     "User",
@@ -30,7 +30,7 @@ func TestStorageGLobalRoleBinding(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create
-	fetched := &GLobalRoleBinding{}
+	fetched := &GlobalRoleBinding{}
 	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
 
 	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())

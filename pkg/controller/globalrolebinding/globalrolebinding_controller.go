@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// Add creates a new GLobalRoleBinding Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new GlobalRoleBinding Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -30,7 +30,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileGLobalRoleBinding{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileGlobalRoleBinding{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 //TODO add namespaces watch
@@ -42,8 +42,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to GLobalRoleBinding
-	err = c.Watch(&source.Kind{Type: &customv1alpha1.GLobalRoleBinding{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to GlobalRoleBinding
+	err = c.Watch(&source.Kind{Type: &customv1alpha1.GlobalRoleBinding{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to RoleBinding
 	err = c.Watch(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &customv1alpha1.GLobalRoleBinding{},
+		OwnerType:    &customv1alpha1.GlobalRoleBinding{},
 	})
 	if err != nil {
 		return err
@@ -60,25 +60,25 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileGLobalRoleBinding{}
+var _ reconcile.Reconciler = &ReconcileGlobalRoleBinding{}
 
-// ReconcileGLobalRoleBinding reconciles a GLobalRoleBinding object
-type ReconcileGLobalRoleBinding struct {
+// ReconcileGlobalRoleBinding reconciles a GlobalRoleBinding object
+type ReconcileGlobalRoleBinding struct {
 	client.Client
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a GLobalRoleBinding object and makes changes based on the state read
-// and what is in the GLobalRoleBinding.Spec
+// Reconcile reads that state of the cluster for a GlobalRoleBinding object and makes changes based on the state read
+// and what is in the GlobalRoleBinding.Spec
 // +kubebuilder:rbac:groups=v1,resources=namespaces,verbs=list;watch
 // +kubebuilder:rbac:groups=rbac,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=custom.authorization.global.io,resources=globalrolebindings,verbs=get;list;watch;create;update;patch;delete
-func (r *ReconcileGLobalRoleBinding) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileGlobalRoleBinding) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	//When a roleBinding was deleted the request is create with namespace but the resource is unamespaced
 	request.NamespacedName.Namespace = ""
 
-	// Fetch the GLobalRoleBinding instance
-	instance := &customv1alpha1.GLobalRoleBinding{}
+	// Fetch the GlobalRoleBinding instance
+	instance := &customv1alpha1.GlobalRoleBinding{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -102,7 +102,7 @@ func (r *ReconcileGLobalRoleBinding) Reconcile(request reconcile.Request) (recon
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileGLobalRoleBinding) getNamespacesByRegex(namespaceRegex string) ([]string, error) {
+func (r *ReconcileGlobalRoleBinding) getNamespacesByRegex(namespaceRegex string) ([]string, error) {
 	regex := regexp.MustCompile(namespaceRegex)
 	namespaceList := &corev1.NamespaceList{}
 	result := []string{}
@@ -118,7 +118,7 @@ func (r *ReconcileGLobalRoleBinding) getNamespacesByRegex(namespaceRegex string)
 	return result, nil
 }
 
-func (r *ReconcileGLobalRoleBinding) roleBindingSpec(globalRoleBinding *customv1alpha1.GLobalRoleBinding, namespace string) (*rbacv1.RoleBinding, error) {
+func (r *ReconcileGlobalRoleBinding) roleBindingSpec(globalRoleBinding *customv1alpha1.GlobalRoleBinding, namespace string) (*rbacv1.RoleBinding, error) {
 	roleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      globalRoleBinding.Name,
@@ -146,7 +146,7 @@ func (r *ReconcileGLobalRoleBinding) roleBindingSpec(globalRoleBinding *customv1
 }
 
 //TODO rewrite this function
-func (r *ReconcileGLobalRoleBinding) createOrUpdateRoleBinding(globalRoleBinding *customv1alpha1.GLobalRoleBinding, namespace string) error {
+func (r *ReconcileGlobalRoleBinding) createOrUpdateRoleBinding(globalRoleBinding *customv1alpha1.GlobalRoleBinding, namespace string) error {
 	roleBinding, err := r.roleBindingSpec(globalRoleBinding, namespace)
 	if err != nil {
 		return err

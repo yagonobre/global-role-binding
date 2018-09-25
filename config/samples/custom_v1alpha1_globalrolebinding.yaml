@@ -1,5 +1,5 @@
 apiVersion: custom.authorization.global.io/v1alpha1
-kind: GLobalRoleBinding
+kind: GlobalRoleBinding
 metadata:
   name: globalrolebinding-engineers
 spec:

@@ -8,7 +8,7 @@ metadata:
 spec:
   group: custom.authorization.global.io
   names:
-    kind: GLobalRoleBinding
+    kind: GlobalRoleBinding
     plural: globalrolebindings
   scope: Cluster
   validation:

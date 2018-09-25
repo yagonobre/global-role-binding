@@ -24,7 +24,7 @@ var rbKey = types.NamespacedName{Name: "test", Namespace: "mr-mohr"}
 
 const timeout = time.Second * 5
 
-var globalRoleBinding = &customv1alpha1.GLobalRoleBinding{
+var globalRoleBinding = &customv1alpha1.GlobalRoleBinding{
 	ObjectMeta: metav1.ObjectMeta{Name: "test"},
 	Subjects: []customv1alpha1.Subject{{
 		Kind:     "Group",
@@ -75,7 +75,7 @@ func TestReconcile(t *testing.T) {
 	g.Expect(add(mgr, recFn)).NotTo(gomega.HaveOccurred())
 	defer close(StartTestManager(mgr, g))
 
-	// Create the GLobalRoleBinding object and expect the Reconcile and RoleBinding to be created
+	// Create the GlobalRoleBinding object and expect the Reconcile and RoleBinding to be created
 	err = c.Create(context.TODO(), globalRoleBinding)
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 	defer c.Delete(context.TODO(), globalRoleBinding)
