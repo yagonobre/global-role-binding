@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -51,6 +52,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		IsController: true,
 		OwnerType:    &customv1alpha1.GlobalRoleBinding{},
 	})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(
+		&source.Kind{Type: &corev1.Namespace{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: reconcileAllGlobalRoleBinding(mgr.GetClient()),
+		})
 	if err != nil {
 		return err
 	}
@@ -98,6 +108,24 @@ func (r *ReconcileGlobalRoleBinding) Reconcile(request reconcile.Request) (recon
 		}
 	}
 	return reconcile.Result{}, nil
+}
+
+func reconcileAllGlobalRoleBinding(c client.Client) handler.ToRequestsFunc {
+	grbList := &customv1alpha1.GlobalRoleBindingList{}
+	result := []reconcile.Request{}
+	resultNil := func(a handler.MapObject) []reconcile.Request { return result }
+
+	err := c.List(context.TODO(), nil, grbList)
+	if err != nil {
+		log.Println(err)
+		return resultNil
+	}
+	for _, grb := range grbList.Items {
+		result = append(result, reconcile.Request{NamespacedName: types.NamespacedName{
+			Name: grb.Name}})
+	}
+
+	return func(a handler.MapObject) []reconcile.Request { return result }
 }
 
 func (r *ReconcileGlobalRoleBinding) getNamespacesByRegex(namespaceRegex string) ([]string, error) {
