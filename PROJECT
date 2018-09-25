@@ -1,0 +1,3 @@
+version: "1"
+domain: authorization.global.io
+repo: github.com/yagonobre/global-role-binding
